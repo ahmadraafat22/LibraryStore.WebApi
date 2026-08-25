@@ -1,4 +1,12 @@
 
+using FluentValidation;
+using LibraryStore.Application.Common.Behaviors;
+using LibraryStore.Application.Features.Categories.Commands.CreateCategory;
+using LibraryStore.Domain.Interfaces;
+using LibraryStore.Infrastructure.Persistence;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
 namespace LibraryStore.WebApi
 {
     public class Program
@@ -7,6 +15,20 @@ namespace LibraryStore.WebApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddDbContext<LibraryDbContext>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("cs")));
+
+
+            // application layer services 
+            builder.Services.AddMediatR(
+                config => config.RegisterServicesFromAssembly(typeof(CreateCategoryCommand).Assembly));
+            builder.Services.AddValidatorsFromAssembly(
+                typeof(CreateCategoryCommand).Assembly);
+            builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+
+            // 
+            builder.Services.AddScoped<ILibraryDbContext, LibraryDbContext>();
             // Add services to the container.
 
             builder.Services.AddControllers();
