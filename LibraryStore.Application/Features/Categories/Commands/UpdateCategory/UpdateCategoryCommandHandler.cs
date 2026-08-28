@@ -16,7 +16,6 @@ namespace LibraryStore.Application.Features.Categories.Commands.UpdateCategory
         public async Task Handle(UpdateCategoryCommand request, CancellationToken cancellationToken)
         {
             var category = await _context.Categories
-                .Where(c => !c.IsDeleted)
                 .FirstOrDefaultAsync(c => c.Id == request.Id);
             if (category == null)
             {

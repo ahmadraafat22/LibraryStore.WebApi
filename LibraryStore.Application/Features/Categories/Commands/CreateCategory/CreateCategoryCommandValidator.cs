@@ -15,7 +15,7 @@ namespace LibraryStore.Application.Features.Categories.Commands.CreateCategory
                 .MaximumLength(100).WithMessage("الاسم يجب ألا يتعدي 100 حرف ")
                 .MustAsync(async (name, cancellationToken) =>
                 !await _context.Categories
-                .AnyAsync(c => c.Name == name && !c.IsDeleted, cancellationToken))
+                .AnyAsync(c => c.Name == name.Trim(), cancellationToken))
                 .WithMessage("هذا الاسم موجود بالفعل ");
 
             RuleFor(c => c.Description)

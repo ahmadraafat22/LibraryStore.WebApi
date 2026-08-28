@@ -17,7 +17,7 @@ namespace LibraryStore.Application.Features.Categories.Queries.GetCategoryById
         public async Task<GetCategoryByIdDto> Handle(GetCategoryByIdQuery request, CancellationToken cancellationToken)
         {
             var category = await _context.Categories
-                .Where(c => c.Id == request.Id && !c.IsDeleted)
+                .Where(c => c.Id == request.Id)
                 .Select(c => new GetCategoryByIdDto
                 {
                     Name = c.Name,

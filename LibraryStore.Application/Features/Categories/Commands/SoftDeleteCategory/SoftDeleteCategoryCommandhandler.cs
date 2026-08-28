@@ -24,10 +24,6 @@ namespace LibraryStore.Application.Features.Categories.Commands.SoftDeleteCatego
                 throw new NotFoundException(nameof(Category), request.Id);
             }
 
-            if (category.IsDeleted)
-            {
-                throw new Exception("هذا القسم تم حذفه من قبل ");
-            }
 
             category.IsDeleted = true;
             await _context.SaveChangesAsync(cancellationToken);

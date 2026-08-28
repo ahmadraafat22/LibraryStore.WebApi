@@ -15,7 +15,6 @@ namespace LibraryStore.Application.Features.Categories.Queries.GetAllCategories
         {
 
             return await _context.Categories.AsNoTracking()
-                .Where(c => !c.IsDeleted)
                 .OrderBy(c => c.Id)
                 .Select(c =>
                 new GetAllCategoryQueryDto

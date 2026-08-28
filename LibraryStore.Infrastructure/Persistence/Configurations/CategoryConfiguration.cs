@@ -13,10 +13,12 @@ namespace LibraryStore.Infrastructure.Persistence.Configurations
                 .HasMaxLength(100)
                 .IsRequired();
             builder.HasIndex(c => c.Name)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[IsDeleted=0]");
 
             builder.Property(c => c.Description)
                 .HasMaxLength(400);
+            builder.HasQueryFilter(c => !c.IsDeleted);
         }
     }
 }
