@@ -1,11 +1,15 @@
 ﻿using FluentValidation;
+using LibraryStore.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace LibraryStore.Application.Features.Products.Commands.UpdateProduct
 {
     public class UpdateProductValidator : AbstractValidator<UpdateProductCommand>
     {
-        public UpdateProductValidator()
+        private readonly ILibraryDbContext _context;
+        public UpdateProductValidator(ILibraryDbContext context)
         {
+            _context = context;
             RuleFor(p => p.Name)
                  .NotEmpty()
                  .WithMessage("لا يمكن ترك الاسم فارغ")
@@ -30,6 +34,15 @@ namespace LibraryStore.Application.Features.Products.Commands.UpdateProduct
                 .GreaterThan(p => p.Price)
                 .When(p => p.OldPrice.HasValue)
                 .WithMessage("السعر القديم يجب أن يكون أكبر من السعر الحالي");
+
+            RuleForEach(p => p.CategoryIds)
+                .MustAsync(async (categoryId, cancellationToken) =>
+                    await _context.Categories.AnyAsync(c => c.Id == categoryId, cancellationToken))
+                .WithMessage("هذا القسم غير موجود");
+
+            RuleFor(p => p.CategoryIds)
+                .Must(ids => ids.Distinct().Count() == ids.Count)
+                .WithMessage("لا يمكن تكرار الاقسام");
         }
     }
 }

@@ -8,5 +8,6 @@ namespace LibraryStore.Application.Features.Products.Commands.CreateProduct
         public string? Description { get; set; }
         public decimal Price { get; set; }
         public decimal? OldPrice { get; set; }
+        public List<Guid> CategoryIds { get; set; } = new();
     }
 }

@@ -18,9 +18,12 @@ namespace LibraryStore.Application.Features.Products.Commands.CreateProduct
                 Name = request.Name,
                 Description = request.Description,
                 Price = request.Price,
-                OldPrice = request.OldPrice
+                OldPrice = request.OldPrice,
             };
-
+            foreach (var item in request.CategoryIds)
+            {
+                product.ProductCategories.Add(new ProductCategory { CategoryId = item });
+            }
             await _context.Products.AddAsync(product);
             await _context.SaveChangesAsync(cancellationToken);
 

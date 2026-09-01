@@ -2,7 +2,7 @@
 
 namespace LibraryStore.Application.Features.Products.Queries.GetAllProducts
 {
-    public class GetAllProductsQuery : IRequest<ICollection<GetProductDto>>
+    public class GetAllProductsQuery : IRequest<ICollection<GetAllProductsDto>>
     {
 
     }

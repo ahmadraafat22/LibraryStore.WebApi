@@ -27,7 +27,7 @@ namespace LibraryStore.WebApi
             builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
 
-            // 
+            // infrastructure layer sevices 
             builder.Services.AddScoped<ILibraryDbContext, LibraryDbContext>();
             // Add services to the container.
 

@@ -15,7 +15,8 @@ namespace LibraryStore.Application.Features.Products.Commands.UpdateProduct
         }
         public async Task Handle(UpdateProductCommand request, CancellationToken cancellationToken)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
+            var product = await _context.Products.Include(p => p.ProductCategories)
+                .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
 
             if (product == null)
             {
@@ -27,6 +28,11 @@ namespace LibraryStore.Application.Features.Products.Commands.UpdateProduct
             product.Price = request.Price;
             product.OldPrice = request.OldPrice;
 
+            _context.ProductCategories.RemoveRange(product.ProductCategories);
+            foreach (var id in request.CategoryIds)
+            {
+                product.ProductCategories.Add(new ProductCategory { CategoryId = id });
+            }
             await _context.SaveChangesAsync(cancellationToken);
 
         }

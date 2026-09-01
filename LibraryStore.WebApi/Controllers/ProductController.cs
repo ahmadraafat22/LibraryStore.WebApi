@@ -1,4 +1,5 @@
 ﻿using LibraryStore.Application.Features.Products.Commands.CreateProduct;
+using LibraryStore.Application.Features.Products.Commands.SoftDeleteProduct;
 using LibraryStore.Application.Features.Products.Commands.UpdateProduct;
 using LibraryStore.Application.Features.Products.Queries.GetAllProducts;
 using LibraryStore.Application.Features.Products.Queries.GetProductById;
@@ -38,5 +39,12 @@ namespace LibraryStore.WebApi.Controllers
             await _mediator.Send(command);
             return NoContent();
         }
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteProduct(Guid id)
+        {
+            await _mediator.Send(new SoftDeleteProductCommand(id));
+            return NoContent();
+        }
+
     }
 }
