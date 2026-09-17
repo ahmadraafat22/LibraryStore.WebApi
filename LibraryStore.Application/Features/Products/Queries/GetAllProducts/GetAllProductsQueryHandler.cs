@@ -1,4 +1,6 @@
-﻿using LibraryStore.Application.Features.ProductImages.Queries;
+﻿using LibraryStore.Application.Common.Extentions;
+using LibraryStore.Application.Common.Responses;
+using LibraryStore.Application.Features.ProductImages.Queries;
 using LibraryStore.Application.Features.Products.Queries.GetProductById;
 using LibraryStore.Domain.Interfaces;
 using MediatR;
@@ -6,18 +8,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LibraryStore.Application.Features.Products.Queries.GetAllProducts
 {
-    public class GetAllProductsQueryHandler : IRequestHandler<GetAllProductsQuery, ICollection<GetAllProductsDto>>
+    public class GetAllProductsQueryHandler : IRequestHandler<GetAllProductsQuery, PaginatedResponse<GetAllProductsDto>>
     {
         private readonly ILibraryDbContext _context;
         public GetAllProductsQueryHandler(ILibraryDbContext context)
         {
             _context = context;
         }
-        public async Task<ICollection<GetAllProductsDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
+        public async Task<PaginatedResponse<GetAllProductsDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
         {
 
-            return await _context.Products.AsNoTracking()
+            var query = _context.Products.AsNoTracking()
+                .AsQueryable();
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                var search = request.Search.Trim();
+                query = query.Where(p => EF.Functions.Like(p.Name, $"%{search}%"));
+            }
+            return await query
                 .Where(p => p.IsAvailable)
+                .OrderBy(p => p.Id)
                 .Select(p => new GetAllProductsDto
                 {
                     Id = p.Id,
@@ -25,13 +35,14 @@ namespace LibraryStore.Application.Features.Products.Queries.GetAllProducts
                     Price = p.Price,
                     OldPrice = p.OldPrice,
                     PrimaryImage = p.Images
+                    .Where(i => i.IsPrimary)
                     .Select(i => new GetProductImageDto
                     {
                         Id = i.Id,
                         ImageUrl = i.ImageUrl,
                         DisplayOrder = i.DisplayOrder,
                         IsPrimary = i.IsPrimary
-                    }).FirstOrDefault(i => i.IsPrimary),
+                    }).FirstOrDefault(),
                     Categories = p.ProductCategories
                     .Select(pc => new GetCategoryDto
                     {
@@ -39,7 +50,7 @@ namespace LibraryStore.Application.Features.Products.Queries.GetAllProducts
                         Name = pc.Category.Name
                     }).ToList()
                 }
-                ).ToListAsync(cancellationToken);
+                ).ToPaginatedResponse(request.PageNumber, request.PageSize, cancellationToken);
 
         }
     }

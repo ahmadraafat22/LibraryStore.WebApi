@@ -2,8 +2,10 @@
 using LibraryStore.Application.Features.Products.Commands.SoftDeleteProduct;
 using LibraryStore.Application.Features.Products.Commands.UpdateProduct;
 using LibraryStore.Application.Features.Products.Queries.GetAllProducts;
+using LibraryStore.Application.Features.Products.Queries.GetNew_Arrivals;
 using LibraryStore.Application.Features.Products.Queries.GetProductById;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LibraryStore.WebApi.Controllers
@@ -17,21 +19,28 @@ namespace LibraryStore.WebApi.Controllers
         {
             _mediator = mediator;
         }
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> CreateProduct(CreateProductCommand command)
         {
             return Ok(await _mediator.Send(command));
         }
         [HttpGet]
-        public async Task<IActionResult> GetAllProducts()
+        public async Task<IActionResult> GetAllProducts([FromQuery] GetAllProductsQuery query)
         {
-            return Ok(await _mediator.Send(new GetAllProductsQuery()));
+            return Ok(await _mediator.Send(query));
+        }
+        [HttpGet("new-arrivals")]
+        public async Task<IActionResult> GetNewArrivals()
+        {
+            return Ok(await _mediator.Send(new GetNewArrivalsQuery()));
         }
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetProductById(Guid id)
         {
             return Ok(await _mediator.Send(new GetProductByIdQuery(id)));
         }
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> UpdateProduct(Guid id, UpdateProductCommand command)
         {
@@ -39,6 +48,7 @@ namespace LibraryStore.WebApi.Controllers
             await _mediator.Send(command);
             return NoContent();
         }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteProduct(Guid id)
         {

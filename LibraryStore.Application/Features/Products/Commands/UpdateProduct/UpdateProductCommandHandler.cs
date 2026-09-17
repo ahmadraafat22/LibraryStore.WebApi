@@ -29,7 +29,7 @@ namespace LibraryStore.Application.Features.Products.Commands.UpdateProduct
             product.OldPrice = request.OldPrice;
 
             _context.ProductCategories.RemoveRange(product.ProductCategories);
-            foreach (var id in request.CategoryIds)
+            foreach (var id in request.CategoryIds.Distinct())
             {
                 product.ProductCategories.Add(new ProductCategory { CategoryId = id });
             }

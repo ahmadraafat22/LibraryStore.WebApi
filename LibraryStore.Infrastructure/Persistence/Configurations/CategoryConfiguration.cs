@@ -14,7 +14,7 @@ namespace LibraryStore.Infrastructure.Persistence.Configurations
                 .IsRequired();
             builder.HasIndex(c => c.Name)
                 .IsUnique()
-                .HasFilter("[IsDeleted=0]");
+                .HasFilter("[IsDeleted]=0");
 
             builder.Property(c => c.Description)
                 .HasMaxLength(400);

@@ -25,6 +25,13 @@ namespace LibraryStore.Application.Features.ProductImages.Commands.CreateImage
 
             RuleFor(pi => pi.DisplayOrder)
                 .GreaterThanOrEqualTo(0).WithMessage("يجب ان يكون الترتيب اكبر من او يساور 0");
+
+            RuleFor(pi => pi.ProductId)
+                .MustAsync(async (productId, cancellationToken) =>
+                    await _context.ProductImages
+                    .CountAsync(pi => pi.ProductId == productId, cancellationToken) < 3
+                    ).WithMessage("لا يمكن اضافة اكثر من 3 صور للمنتج");
+
         }
     }
 }

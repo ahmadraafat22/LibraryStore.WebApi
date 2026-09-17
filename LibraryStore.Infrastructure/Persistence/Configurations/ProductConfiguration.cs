@@ -23,6 +23,7 @@ namespace LibraryStore.Infrastructure.Persistence.Configurations
                 .WithOne(i => i.Product)
                 .HasForeignKey(p => p.ProductId);
             builder.HasQueryFilter(p => !p.IsDeleted);
+
         }
     }
 }
