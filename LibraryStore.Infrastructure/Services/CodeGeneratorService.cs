@@ -2,7 +2,7 @@
 using LibraryStore.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace LibraryStore.Infrastructure.Service
+namespace LibraryStore.Infrastructure.Services
 {
     public class CodeGeneratorService : ICodeGeneratorService
     {
@@ -25,7 +25,7 @@ namespace LibraryStore.Infrastructure.Service
                 await command.Connection.OpenAsync();
             }
             var result = await command.ExecuteScalarAsync();
-            var number = Convert.ToInt32(result);
+            var number = Convert.ToInt64(result);
             return $"{prefix}-{number:D6}";
         }
         private static string GetSequenceName(CodeType type)

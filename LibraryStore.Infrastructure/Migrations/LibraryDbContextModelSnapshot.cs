@@ -22,6 +22,8 @@ namespace LibraryStore.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence<int>("OrderSequence");
+
             modelBuilder.Entity("LibraryStore.Domain.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")

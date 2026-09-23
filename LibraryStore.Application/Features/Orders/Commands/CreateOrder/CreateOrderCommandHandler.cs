@@ -1,4 +1,6 @@
-﻿using LibraryStore.Domain.Common.Enums;
+﻿using LibraryStore.Application.Common.Exceptions;
+using LibraryStore.Application.Common.Interfaces;
+using LibraryStore.Domain.Common.Enums;
 using LibraryStore.Domain.Entities;
 using LibraryStore.Domain.Interfaces;
 using MediatR;
@@ -11,10 +13,12 @@ namespace LibraryStore.Application.Features.Orders.Commands.CreateOrder
     {
         private readonly ILibraryDbContext _context;
         private ICodeGeneratorService _codeGeneratorService;
-        public CreateOrderCommandHandler(ILibraryDbContext context, ICodeGeneratorService codeGeneratorService)
+        private readonly ITelegramOrderNotifier _telegramOrderNotifier;
+        public CreateOrderCommandHandler(ILibraryDbContext context, ICodeGeneratorService codeGeneratorService, ITelegramOrderNotifier telegramOrderNotifier)
         {
             _context = context;
             _codeGeneratorService = codeGeneratorService;
+            _telegramOrderNotifier = telegramOrderNotifier;
         }
 
         public async Task<Guid> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -26,11 +30,11 @@ namespace LibraryStore.Application.Features.Orders.Commands.CreateOrder
 
 
             var products = await _context.Products
-                .Where(p => ProductIds.Contains(p.Id))
+                .Where(p => ProductIds.Contains(p.Id) && p.IsAvailable)
                 .ToListAsync(cancellationToken);
             if (products.Count != ProductIds.Count)
             {
-                throw new Exception("Wrong Product Id");
+                throw new BusinessRuleException("One or more products are unAvailble or do not exists !");
             }
             var orderItems = new List<OrderItem>();
 
@@ -61,8 +65,36 @@ namespace LibraryStore.Application.Features.Orders.Commands.CreateOrder
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync(cancellationToken);
+
+            await SendTelegramWithRetryAsync(order, cancellationToken);
+
             return order.Id;
 
+        }
+        private async Task SendTelegramWithRetryAsync(
+            Order order,
+            CancellationToken cancellationToken)
+        {
+            const int maxAttempts = 3;
+            var delays = new[] { 2, 5 };
+            var orderItems = order.OrderItems
+                .Select(i => new OrderTelegramItem(i.ProductName, i.Quantity)).ToList();
+            var notification = new OrderTelegramNotification(order.Id, order.OrderNumber, order.CustomerName, order.CustomerPhone, order.CustomerAddress, order.Total, orderItems);
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    await _telegramOrderNotifier.NotifyNewOrderAsync(notification, cancellationToken);
+                    return;
+                }
+                catch
+                {
+                    if (attempt == maxAttempts) return;
+
+                    await Task.Delay(TimeSpan.FromSeconds(delays[attempt - 1]), cancellationToken);
+                }
+            }
         }
     }
 }

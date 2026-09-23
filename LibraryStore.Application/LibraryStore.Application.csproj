@@ -17,8 +17,4 @@
     <ProjectReference Include="..\LibraryStore.Domain\LibraryStore.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Features\Orders\Queries\" />
-  </ItemGroup>
-
 </Project>
