@@ -20,15 +20,23 @@ namespace LibraryStore.Application.Features.Orders.Queries.GetOrderById
                 .Where(o => o.Id == request.Id)
                 .Select(o => new GetOrderByIdDto
                 {
+                    Id = o.Id,
                     OrderNumber = o.OrderNumber,
                     CustomerAddress = o.CustomerAddress,
                     CustomerName = o.CustomerName,
                     CustomerPhone = o.CustomerPhone,
-                    Status = o.Status.ToString(),
-                    OrderItems = string.Join("\n",
-                        o.OrderItems.Select(oi => $"{oi.ProductName} x {oi.Quantity}")
-                    ),
-                    Total = o.Total
+                    Status = o.Status,
+                    OrderItems = o.OrderItems
+                    .Select(oi => new OrderItemDetailDto
+                    {
+                        ProductName = oi.ProductName,
+                        UnitPrice = oi.UnitPrice,
+                        Quantity = oi.Quantity,
+                        LineTotal = oi.LineTotal
+                    }).ToList(),
+                    Total = o.Total,
+                    UpdatedAt = o.UpdatedAt,
+                    CreatedAt = o.CreatedAt
                 }).FirstOrDefaultAsync(cancellationToken);
 
             if (order == null)

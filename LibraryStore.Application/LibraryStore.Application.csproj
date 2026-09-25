@@ -17,4 +17,8 @@
     <ProjectReference Include="..\LibraryStore.Domain\LibraryStore.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Features\Admin\Commands\" />
+  </ItemGroup>
+
 </Project>

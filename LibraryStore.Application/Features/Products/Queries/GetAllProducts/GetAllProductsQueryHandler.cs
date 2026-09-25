@@ -18,15 +18,20 @@ namespace LibraryStore.Application.Features.Products.Queries.GetAllProducts
         public async Task<PaginatedResponse<GetAllProductsDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
         {
 
-            var query = _context.Products.AsNoTracking()
-                .AsQueryable();
+            var query = _context.Products.AsNoTracking().Where(p => p.IsAvailable);
+
+            if (request.CategoryId.HasValue)
+            {
+                query = query.Where(p =>
+                    p.ProductCategories.Any(pc => pc.CategoryId == request.CategoryId)
+                );
+            }
             if (!string.IsNullOrEmpty(request.Search))
             {
                 var search = request.Search.Trim();
                 query = query.Where(p => EF.Functions.Like(p.Name, $"%{search}%"));
             }
             return await query
-                .Where(p => p.IsAvailable)
                 .OrderBy(p => p.Id)
                 .Select(p => new GetAllProductsDto
                 {

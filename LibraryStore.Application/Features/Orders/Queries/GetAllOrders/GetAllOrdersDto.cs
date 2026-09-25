@@ -9,6 +9,7 @@
         public string CustomerPhone { get; set; }
         public string CustomerAddress { get; set; }
         public string Status { get; set; }
-        public string OrderItems { get; set; }
+        public int ItemsCount { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

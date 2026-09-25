@@ -22,9 +22,9 @@ namespace LibraryStore.WebApi.Controllers
             return Ok(await _mediator.Send(command));
         }
         [HttpGet]
-        public async Task<IActionResult> GetAllOrders()
+        public async Task<IActionResult> GetAllOrders([FromQuery] GetAllOrdersQuery query)
         {
-            return Ok(await _mediator.Send(new GetAllOrdersQuery()));
+            return Ok(await _mediator.Send(query));
         }
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetOrderById(Guid id)
