@@ -14,9 +14,9 @@ namespace LibraryStore.WebApi.Controllers
             _mediator = mediator;
         }
         [HttpGet("stats")]
-        public async Task<IActionResult> GetStats()
+        public async Task<IActionResult> GetStats([FromQuery] GetDashboardStatsQuery query)
         {
-            return Ok(await _mediator.Send(new GetDashboardStatsQuery()));
+            return Ok(await _mediator.Send(query));
         }
     }
 }

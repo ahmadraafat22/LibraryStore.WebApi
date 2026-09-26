@@ -30,5 +30,30 @@ namespace LibraryStore.Infrastructure.Persistence
                 .StartsAt(1)
                 .IncrementsBy(1);
         }
+        public void ApplyAudit()
+        {
+            var entries = ChangeTracker.Entries<BaseEntity>();
+            foreach (var entry in entries)
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.Entity.CreatedAt = DateTime.UtcNow;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplyAudit();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+        public override int SaveChanges()
+        {
+            ApplyAudit();
+            return base.SaveChanges();
+        }
     }
 }

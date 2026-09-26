@@ -17,8 +17,20 @@ namespace LibraryStore.Application.Features.Admin.Queries.Dashboard
             GetDashboardStatsQuery request,
             CancellationToken cancellationToken)
         {
-            var orderStats = await _context.Orders
-                .AsNoTracking()
+            DateTime? startDate = request.DashboardPeriod switch
+            {
+                DashboardPeriod.Day => DateTime.UtcNow.Date,
+                DashboardPeriod.Week => DateTime.UtcNow.Date.AddDays(-7),
+                DashboardPeriod.Month => DateTime.UtcNow.Date.AddDays(-30),
+                null => null,   // مفيش فلتر
+                _ => DateTime.UtcNow.Date.AddDays(-30)
+            };
+
+            var orderQuery = _context.Orders.AsNoTracking();
+            if (startDate.HasValue)
+                orderQuery = orderQuery.Where(o => o.CreatedAt >= startDate.Value);
+
+            var orderStats = await orderQuery
                 .GroupBy(o => 1)
                 .Select(g => new
                 {
@@ -35,9 +47,15 @@ namespace LibraryStore.Application.Features.Admin.Queries.Dashboard
                 .AsNoTracking()
                 .CountAsync(p => p.IsAvailable, cancellationToken);
 
-            var bestSellers = await _context.OrderItems
+            var bestSellersQuery = _context.OrderItems
                 .AsNoTracking()
-                .Where(oi => oi.Order.Status == OrderStatus.Confirmed)
+                .Where(oi => oi.Order.Status == OrderStatus.Confirmed);
+
+            if (startDate.HasValue)
+                bestSellersQuery = bestSellersQuery
+                    .Where(oi => oi.Order.CreatedAt >= startDate.Value);
+
+            var bestSellers = await bestSellersQuery
                 .GroupBy(oi => new { oi.ProductId, oi.ProductName })
                 .Select(g => new BestSellingProductDto
                 {
