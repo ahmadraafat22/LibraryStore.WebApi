@@ -16,14 +16,14 @@ namespace LibraryStore.WebApi.Controllers
         {
             _mediator = mediator;
         }
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> CreateImage(CreateProductImageCommand command)
         {
             var id = await _mediator.Send(command);
             return Ok(id);
         }
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteImage(Guid id)
         {

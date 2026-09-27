@@ -1,4 +1,5 @@
 ﻿using LibraryStore.Application.Common.Exceptions;
+using LibraryStore.Application.Common.Interfaces;
 using LibraryStore.Domain.Entities;
 using LibraryStore.Domain.Interfaces;
 using MediatR;
@@ -6,74 +7,123 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LibraryStore.Application.Features.ProductImages.Commands.UpdateProductImage
 {
-    public class UpdateProductImageCommandHandler : IRequestHandler<UpdateProductImageCommand>
+    public class UpdateProductImageCommandHandler
+        : IRequestHandler<UpdateProductImageCommand>
     {
         private readonly ILibraryDbContext _context;
-        public UpdateProductImageCommandHandler(ILibraryDbContext context)
+        private readonly ICloudinaryService _cloudinaryService;
+
+        public UpdateProductImageCommandHandler(ILibraryDbContext context, ICloudinaryService cloudinaryService)
         {
             _context = context;
+            _cloudinaryService = cloudinaryService;
         }
+
         public async Task Handle(UpdateProductImageCommand request, CancellationToken cancellationToken)
         {
             var image = await _context.ProductImages
-                .FirstOrDefaultAsync(pi => pi.Id == request.ProductImageId, cancellationToken);
+                .FirstOrDefaultAsync(
+                    pi => pi.Id == request.ProductImageId,
+                    cancellationToken);
 
             if (image == null)
             {
-                throw new NotFoundException(nameof(ProductImage), request.ProductImageId);
+                throw new NotFoundException(
+                    nameof(ProductImage),
+                    request.ProductImageId);
             }
+
+            bool wasPrimary = image.IsPrimary;
+
+            if (request.Image != null)
+            {
+                var oldPublicId = image.PublicId;
+
+                var uploadResult = await _cloudinaryService.UploadImageAsync(
+                    request.Image,
+                    cancellationToken);
+
+                image.ImageUrl = uploadResult.Url;
+                image.PublicId = uploadResult.PublicId;
+
+
+                await _cloudinaryService.DeleteImageAsync(
+                    oldPublicId,
+                    cancellationToken);
+            }
+
             if (request.IsPrimary)
             {
-                var currentPrimaryImage = await _context.ProductImages
-                    .Where(pi => pi.ProductId == request.ProductId && pi.IsPrimary)
+                var currentPrimaryImages = await _context.ProductImages
+                    .Where(pi =>
+                        pi.ProductId == image.ProductId &&
+                        pi.Id != image.Id &&
+                        pi.IsPrimary)
                     .ToListAsync(cancellationToken);
-                foreach (var img in currentPrimaryImage)
+
+                foreach (var img in currentPrimaryImages)
                 {
                     img.IsPrimary = false;
                 }
-            }
-            bool wasPrimary = image.IsPrimary;
-            image.ImageUrl = request.ImageUrl;
-            image.IsPrimary = request.IsPrimary;
 
-            if (request.IsPrimary)
-            {
-                var images = await _context.ProductImages
-                    .Where(pi => pi.ProductId == request.ProductId && pi.Id != request.ProductImageId)
+                var otherImages = await _context.ProductImages
+                    .Where(pi =>
+                        pi.ProductId == image.ProductId &&
+                        pi.Id != image.Id)
                     .OrderBy(pi => pi.DisplayOrder)
                     .ToListAsync(cancellationToken);
+
                 int order = 1;
-                foreach (var img in images)
+
+                foreach (var img in otherImages)
                 {
-                    img.DisplayOrder = order;
-                    order++;
+                    img.DisplayOrder = order++;
                 }
+
+                image.IsPrimary = true;
                 image.DisplayOrder = 0;
             }
+
             else if (wasPrimary)
             {
                 var newPrimaryImage = await _context.ProductImages
-                    .Where(pi => pi.ProductId == request.ProductId && pi.Id != request.ProductImageId)
+                    .Where(pi =>
+                        pi.ProductId == image.ProductId &&
+                        pi.Id != image.Id)
                     .OrderBy(pi => pi.DisplayOrder)
                     .FirstOrDefaultAsync(cancellationToken);
+
                 if (newPrimaryImage == null)
                 {
-                    throw new Exception("لا يوجد صور اخرى لتكون الرئيسية");
+                    throw new InvalidOperationException(
+                        "لا يمكن إزالة الصورة الرئيسية، يجب وجود صورة أخرى.");
                 }
 
-                var images = await _context.ProductImages
-                    .Where(pi => pi.ProductId == request.ProductId && pi.Id != newPrimaryImage.Id)
+                newPrimaryImage.IsPrimary = true;
+                newPrimaryImage.DisplayOrder = 0;
+
+                var otherImages = await _context.ProductImages
+                    .Where(pi =>
+                        pi.ProductId == image.ProductId &&
+                        pi.Id != image.Id &&
+                        pi.Id != newPrimaryImage.Id)
                     .OrderBy(pi => pi.DisplayOrder)
                     .ToListAsync(cancellationToken);
-                newPrimaryImage.DisplayOrder = 0;
-                newPrimaryImage.IsPrimary = true;
+
                 int order = 1;
-                foreach (var img in images)
+
+                foreach (var img in otherImages)
                 {
-                    img.DisplayOrder = order;
-                    order++;
+                    img.DisplayOrder = order++;
                 }
+
+                image.IsPrimary = false;
             }
+            else
+            {
+                image.IsPrimary = false;
+            }
+
             await _context.SaveChangesAsync(cancellationToken);
         }
     }

@@ -89,6 +89,9 @@ namespace LibraryStore.WebApi
                     options => options.AdminUserId != 0,
                     "Telegram:AdminUserId is required.")
                 .ValidateOnStart();
+            builder.Services.Configure<CloudinaryOptions>(
+                builder.Configuration.GetSection("Cloudinary"));
+            builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
             //builder.Services
 
 

@@ -1,16 +1,19 @@
-﻿using LibraryStore.Domain.Entities;
+﻿using LibraryStore.Application.Common.Interfaces;
+using LibraryStore.Domain.Entities;
 using LibraryStore.Domain.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibraryStore.Application.Features.ProductImages.Commands.CreateImage
 {
-    public class CreateProductImageHandler : IRequestHandler<CreateProductImageCommand, Guid>
+    public class CreateProductImageCommandHandler : IRequestHandler<CreateProductImageCommand, Guid>
     {
         private readonly ILibraryDbContext _context;
-        public CreateProductImageHandler(ILibraryDbContext context)
+        private readonly ICloudinaryService _cloudinaryService;
+        public CreateProductImageCommandHandler(ILibraryDbContext context, ICloudinaryService cloudinaryService)
         {
             _context = context;
+            _cloudinaryService = cloudinaryService;
         }
         public async Task<Guid> Handle(CreateProductImageCommand request, CancellationToken cancellationToken)
         {
@@ -38,10 +41,13 @@ namespace LibraryStore.Application.Features.ProductImages.Commands.CreateImage
                 .Select(pi => (int?)pi.DisplayOrder)
                 .MaxAsync(cancellationToken);
 
+            var uploadResult = await _cloudinaryService.UploadImageAsync(request.Image, cancellationToken);
+
             var productImage = new ProductImage
             {
                 ProductId = request.ProductId,
-                ImageUrl = request.ImageUrl,
+                PublicId = uploadResult.PublicId,
+                ImageUrl = uploadResult.Url,
                 IsPrimary = isPrimary,
                 DisplayOrder = isPrimary ? 0 : (maxOrder ?? -1) + 1
             };
