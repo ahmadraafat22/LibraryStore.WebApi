@@ -13,6 +13,7 @@ namespace LibraryStore.Infrastructure.Persistence
         public DbSet<ProductCategory> ProductCategories { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<StoreSettings> StoreSettings { get; set; }
         public LibraryDbContext(DbContextOptions<LibraryDbContext> options) : base(options)
         {
 

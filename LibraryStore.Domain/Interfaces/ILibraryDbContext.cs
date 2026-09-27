@@ -12,6 +12,7 @@ namespace LibraryStore.Domain.Interfaces
         public DbSet<ProductCategory> ProductCategories { get; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<StoreSettings> StoreSettings { get; set; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken);
     }
 }
