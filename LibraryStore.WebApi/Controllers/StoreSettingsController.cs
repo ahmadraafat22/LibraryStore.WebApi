@@ -1,7 +1,5 @@
-﻿using LibraryStore.Application.Features.StoreSettings.Commands.UpdateStoreSettings;
-using LibraryStore.Application.Features.StoreSettings.Queries.GetStoreSettings;
+﻿using LibraryStore.Application.Features.StoreSettings.Queries.GetStoreSettings;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LibraryStore.WebApi.Controllers
@@ -14,13 +12,6 @@ namespace LibraryStore.WebApi.Controllers
         public StoreSettingsController(IMediator mediator)
         {
             _mediator = mediator;
-        }
-        [Authorize(Roles = "Admin")]
-        [HttpPut]
-        public async Task<IActionResult> UpdateStoreSettings([FromBody] UpdateStoreSettingsCommand command)
-        {
-            await _mediator.Send(command);
-            return NoContent();
         }
         [HttpGet]
         public async Task<IActionResult> GetStoreSettings(CancellationToken cancellationToken)

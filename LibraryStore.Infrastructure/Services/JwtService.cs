@@ -48,7 +48,7 @@ namespace LibraryStore.Infrastructure.Services
                 audience: _config["JWT:Aud"],
                 signingCredentials: creds,
                 claims: tokenClaims,
-                expires: DateTime.UtcNow.AddDays(1)
+                expires: DateTime.UtcNow.AddMinutes(int.Parse(_config["JWT:ExpiryMinutes"]))
                 );
             return new JwtSecurityTokenHandler().WriteToken(token);
         }

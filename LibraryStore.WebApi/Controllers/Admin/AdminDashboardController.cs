@@ -1,10 +1,12 @@
 ﻿using LibraryStore.Application.Features.Admin.Queries.Dashboard;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace LibraryStore.WebApi.Controllers
+namespace LibraryStore.WebApi.Controllers.Admin
 {
-    [Route("api/[controller]")]
+    [Route("api/admin/Dashboard")]
+    [Authorize(Roles = "Admin")]
     [ApiController]
     public class AdminDashboardController : ControllerBase
     {
