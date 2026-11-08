@@ -1,483 +1,477 @@
-# LibraryStore — E-Commerce Store Backend API
+# 📚 LibraryStore
 
-A reusable bookstore e-commerce backend built with **ASP.NET Core 8**, **Entity Framework Core**, and **SQL Server**.
+> **Bookstore E-Commerce Backend API**  
+> A production-ready, reusable backend template for a local bookstore — built with ASP.NET Core 8, Clean Architecture, and real-world external service integrations.
 
-LibraryStore demonstrates practical backend engineering: Clean/Layered Architecture, CQRS with MediatR, centralized request validation, JWT authentication, guest checkout order management, and integrations with external APIs (Telegram, Cloudinary).
-
-> **Project scope:** This repository contains the backend API only. The frontend consumes these endpoints but is maintained in a separate project.
+---
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
-- [Technology Stack](#technology-stack)
+- [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
-- [Key Concepts](#key-concepts)
+- [Features](#features)
+- [Data Model](#data-model)
+- [Order Management](#order-management)
 - [Telegram Bot Integration](#telegram-bot-integration)
 - [Cloudinary Integration](#cloudinary-integration)
-- [Authentication and Authorization](#authentication-and-authorization)
-- [Order Management](#order-management)
-- [Offers / Discounts](#offers--discounts)
-- [Store Settings](#store-settings)
-- [Admin Dashboard](#admin-dashboard)
-- [CORS Policy](#cors-policy)
-- [Getting Started](#getting-started)
-- [Configuration](#configuration)
-- [API Endpoints](#api-endpoints)
 - [Security](#security)
-- [Current Business Scope (V1)](#current-business-scope-v1)
-- [Roadmap (V2)](#roadmap-v2)
-- [Project Status](#project-status)
+- [Getting Started](#getting-started)
+- [Deployment](#deployment)
+- [Known Limitations & Scope](#known-limitations--scope)
+- [Roadmap](#roadmap)
+
+---
 
 ## Overview
 
-LibraryStore is a reusable backend template for an online bookstore. It provides APIs for managing products, categories, product images, store settings, and guest customer orders.
+**LibraryStore** is a backend REST API for managing a bookstore catalog, administrator accounts, product images, store configuration, and customer orders. It is built as both a practical portfolio project and a foundation for a real local business — designed to be reusable and adaptable for other shops.
 
-The project integrates with:
+**Key goals:**
+- Deliver a fully functional backend for a local bookstore.
+- Apply Clean Architecture for long-term maintainability.
+- Integrate external services: Cloudinary for image storage, Telegram for real-time order management.
+- Serve as a reusable template for similar e-commerce backends.
 
-- **Telegram Bot API** — sends order notifications to the administrator with inline buttons to confirm or cancel orders directly from Telegram.
-- **Cloudinary** — uploads, stores, and deletes product images without storing binaries in SQL Server.
+> The frontend is a separate project. This repository covers the backend API only.
 
-The goal is a maintainable backend with clear separation of concerns and real-world integrations, built independently as a freelance/portfolio project.
+---
 
-## Features
-
-- Product and category management with a many-to-many relationship.
-- Product image management: maximum of three active images per product.
-- Primary image selection with server-controlled display ordering.
-- Cloudinary image upload and deletion.
-- Product search and pagination.
-- "New Arrivals" endpoint (latest products, fixed page size).
-- Store settings management (contact info and social links).
-- Guest checkout — no customer registration required.
-- Automatic, sequence-based order numbering.
-- Order item snapshots to preserve product name and price at purchase time.
-- Order statuses: `Pending`, `Confirmed`, `Cancelled`.
-- Telegram notifications with inline Confirm/Cancel buttons; message is edited after the action is taken.
-- Telegram webhook integration, secured with a secret token.
-- Admin dashboard with sales and order statistics by period.
-- ASP.NET Core Identity and JWT authentication with role-based authorization.
-- FluentValidation pipeline and centralized global exception handling.
-- Soft deletion with global query filters across business entities.
-
-## Technology Stack
+## Tech Stack
 
 | Technology | Purpose |
 |---|---|
-| C# / .NET 8 | Application platform |
-| ASP.NET Core Web API | HTTP API and controllers |
-| Entity Framework Core | Database access and ORM |
-| SQL Server | Relational database |
-| ASP.NET Core Identity | User and role management |
-| JWT Bearer Authentication | Protecting authenticated API requests |
-| MediatR | CQRS-style request/handler dispatch |
-| FluentValidation | Request validation pipeline |
-| Cloudinary | Product image storage and delivery |
-| Telegram Bot API | Order notifications and administrator actions |
-| Swagger / OpenAPI | API documentation and testing |
+| **C# / .NET 8** | Main language and application platform |
+| **ASP.NET Core Web API** | HTTP API layer |
+| **Entity Framework Core** | ORM and database access |
+| **SQL Server** | Relational database |
+| **MediatR** | CQRS command/query dispatch |
+| **FluentValidation** | Request validation pipeline |
+| **ASP.NET Core Identity** | Administrator identity management |
+| **JWT Bearer** | Stateless API authentication |
+| **Cloudinary** | Cloud-based product image storage |
+| **Telegram Bot API** | Real-time order notifications and actions |
+
+---
 
 ## Architecture
 
-The solution follows Clean/Layered Architecture, split into four projects:
+LibraryStore follows **Clean Architecture**, organized into four layers with strict dependency rules:
 
-```text
+```
 LibraryStore/
-├── LibraryStore.Domain/
-│   ├── Entities/
-│   └── Interfaces/
-├── LibraryStore.Application/
-│   ├── Features/
-│   └── Common/
-│       ├── Behaviors/
-│       ├── Exceptions/
-│       └── DTOs/
-├── LibraryStore.Infrastructure/
-│   ├── Persistence/
-│   └── Services/
-└── LibraryStore.WebApi/
-    ├── Controllers/
-    │   └── Admin/
-    ├── Middleware/
-    └── Program.cs
+├── Domain/          # Core business entities and rules
+├── Application/     # Use cases, CQRS handlers, validation
+├── Infrastructure/  # EF Core, SQL Server, Cloudinary, Telegram
+└── WebApi/          # Controllers, DI, auth, middleware
 ```
 
-### 1. Domain Layer
+### Layer Responsibilities
 
-Core business entities and abstractions — products, categories, product images, orders, and order items — plus a shared `BaseEntity`:
+**Domain**  
+Core business entities, relationships, and domain rules. No dependency on the database, HTTP, or any external service.
 
-```csharp
-public abstract class BaseEntity
-{
-    public Guid Id { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public bool IsDeleted { get; set; } = false;
-}
+**Application**  
+All application use cases and workflows:
+- MediatR commands and queries
+- Command/query handlers
+- FluentValidation validators
+- Application interfaces and abstractions
+- Pipeline behaviors including validation
+
+**Infrastructure**  
+Implementations that communicate with the outside world:
+- EF Core `DbContext` and entity configurations
+- SQL Server persistence
+- Implementations of Application abstractions
+- Cloudinary image upload/delete integration
+- Telegram Bot webhook and callback handling
+
+**WebApi**  
+The HTTP entry point:
+- Thin controllers that dispatch to MediatR
+- Dependency injection composition root
+- Authentication and authorization configuration
+- Middleware and HTTP pipeline setup
+
+### Request Flow
+
+```
+HTTP Request
+  → Controller
+  → MediatR Command / Query
+  → Validation Pipeline Behavior
+  → Handler
+  → Application Abstraction
+  → Infrastructure Implementation
+  → SQL Server / Cloudinary / Telegram
 ```
 
-The Domain layer has no dependency on EF Core, controllers, or external API implementations.
+Controllers are intentionally thin. All business and use-case logic lives in Application handlers.
 
-### 2. Application Layer
+---
 
-Use cases and request-handling logic, organized as MediatR Commands and Queries (creating/updating products, creating orders, retrieving orders, updating order status, etc.). The Application layer depends on abstractions (e.g. `ILibraryDbContext`) rather than concrete infrastructure.
+## Features
 
-### 3. Infrastructure Layer
+### Product Management
 
-Implements persistence and external services:
+Full CRUD support for bookstore products, including availability toggling, pricing, and multi-category assignment.
 
-- EF Core + SQL Server (`LibraryDbContext : IdentityDbContext<ApplicationUser>, ILibraryDbContext`).
-- Cloudinary image operations.
-- Telegram Bot API client and webhook handling.
-- External-service configuration and dependency injection.
+| Field | Description |
+|---|---|
+| `Id` | GUID identifier (from base entity) |
+| `Name` | Product name (max 100 chars) |
+| `Description` | Product description (max 400 chars) |
+| `Price` | Decimal price, precision `(18,2)` |
+| `OldPrice` | Optional previous price for sale display |
+| `IsAvailable` | Controls whether a product can be ordered |
 
-### 4. WebApi Layer
+### Category Management
 
-- Controllers and routes, with Public and Admin controllers kept separate for clarity and security.
-- Authentication/authorization middleware.
-- Dependency injection composition and Swagger configuration.
-- Global exception middleware.
+Products are organized into categories with the following rules:
+- Name is required (max 100 chars).
+- Description max 400 chars.
+- Category names must be unique among active (non-deleted) categories.
+- Soft deletion is used instead of hard deletes.
 
-### Architecture Decisions
+### Many-to-Many Product–Category Relationship
 
-- Controllers stay thin; business logic lives in Application handlers.
-- **No Unit of Work + Generic Repository pattern.** Application handlers work directly against `ILibraryDbContext`, with MediatR/CQRS organizing the use cases instead.
-- EF Core configurations use `IEntityTypeConfiguration<T>`, loaded via `ApplyConfigurationsFromAssembly()`.
-- Public vs. Admin endpoints are physically separated into different controllers/routes.
+A product can belong to multiple categories and a category can hold multiple products. This is managed through a `ProductCategory` join entity with a composite key `(ProductId, CategoryId)`.
 
-This separation improves maintainability and makes it easier to change infrastructure without spreading changes across the whole application.
+### Product Images (Cloudinary)
 
-## Key Concepts
+Each product supports **up to three active images**, stored externally via Cloudinary.
 
-### CQRS and MediatR
+| Field | Description |
+|---|---|
+| `Url` | Cloudinary-hosted secure image URL |
+| `PublicId` | Cloudinary identifier used for management and deletion |
+| `IsPrimary` | Flags the product's main display image |
+| `DisplayOrder` | Backend-controlled display ordering |
 
-- **Commands** change state (e.g. create a product, confirm an order).
-- **Queries** retrieve data (e.g. get product details, list orders).
-- **Handlers** contain the logic for each request; **MediatR** dispatches requests to their handler.
+### Search & Pagination
 
-This is a CQRS-style organization of code, not separate read/write databases.
+Product listing supports search and paginated responses. Confirm exact query parameters, sortable fields, and response schema from the API endpoints.
 
-### FluentValidation Pipeline
+### Store Settings
 
-FluentValidation defines rules for incoming requests (required fields, valid quantities, supported image formats, etc.). A MediatR pipeline behavior runs the relevant validator before the handler executes, keeping validation out of controllers.
+A dedicated Store Settings feature allows store-level configuration to be managed through the API.
 
-### Entity Framework Core Configurations
+### Administrator Authentication
 
-Entity configurations define required fields and max lengths, decimal precision, unique indexes, relationships, database constraints, and global query filters for soft deletion.
+- ASP.NET Core Identity for administrator account management.
+- JWT Bearer tokens for protecting administrative endpoints.
+- `/me`-style endpoint returning the current administrator's profile.
+- **V1 note:** logout is client-side token deletion. Server-side token revocation and refresh tokens are not part of the current implementation.
+
+---
+
+## Data Model
+
+```
+Category
+   |
+   | many-to-many (via ProductCategory)
+   |
+Product ──── ProductImage (up to 3 per product)
+
+Order
+   |
+   | one-to-many
+   |
+OrderItem (product name + price snapshot + quantity)
+
+Administrator ──── ASP.NET Core Identity tables
+Store Settings ──── store-level configuration
+```
+
+### Base Entity
+
+All main entities inherit from a shared base:
+
+| Property | Purpose |
+|---|---|
+| `Id` | `Guid` identifier |
+| `CreatedAt` | UTC creation timestamp |
+| `UpdatedAt` | Nullable UTC update timestamp |
+| `IsDeleted` | Soft-delete flag (default `false`) |
+
+> `ProductCategory` uses a composite key and does not inherit from `BaseEntity`.
 
 ### Soft Deletion
 
-Business entities use `IsDeleted` instead of hard deletes. Global query filters exclude soft-deleted records automatically (filtered index syntax: `[IsDeleted] = 0`). For product images, deleting a record also triggers deletion of the corresponding Cloudinary asset.
+Relevant entities use soft deletion and EF Core global query filters, so deleted records are excluded from queries automatically.
 
-### Many-to-Many Relationships
-
-Products and categories use an explicit `ProductCategory` join entity (composite key `ProductId + CategoryId`, not derived from `BaseEntity`). A product can belong to multiple categories, and a category can contain multiple products.
-
-### Order Snapshots
-
-Order items store `ProductName`, `UnitPrice`, and `LineTotal` at the time of purchase, so historical orders stay accurate even if a product's name or current price changes later.
-
-### Server-Side Business Rules
-
-The backend — never the client — calculates line totals and the order total, assigns the initial order status, and generates the order number. The client-side cart (kept in frontend LocalStorage) is only a convenience; the server re-validates product existence, availability, quantity, and current price on checkout. If any item in the cart is unavailable, the entire checkout is rejected.
-
-## Telegram Bot Integration
-
-### New Order Notification
-
-When a customer places an order:
-
-1. The API validates the request.
-2. The backend checks that requested products exist and are available.
-3. The backend calculates item totals and the order total using server-side prices.
-4. The order is saved with `Pending` status and a generated order number.
-5. The Telegram bot sends a notification to the administrator with order number, customer name and phone, delivery address, ordered products/quantities, and the order total.
-
-### Confirm and Cancel Buttons
-
-The Telegram message includes inline **Confirm Order** and **Cancel Order** buttons, with callback data `confirm:{orderId}` / `cancel:{orderId}`.
-
-When the administrator presses one:
-
-1. Telegram sends a callback update to the configured webhook (`POST /api/telegram/webhook`).
-2. The backend validates the webhook secret and the authorized administrator's Telegram user ID.
-3. The callback identifies the order and the requested action.
-4. The corresponding `ConfirmOrderCommand` / `CancelOrderCommand` updates the order status in the database.
-5. The original Telegram message is edited to remove the buttons and show the new status label (falls back to sending a new message if the edit fails).
-
-The bot never manages order data independently — the database remains the source of truth; Telegram only triggers backend commands.
-
-### Webhook Security
-
-- The secret is validated via the `X-Telegram-Bot-Api-Secret-Token` header.
-- `allowedUpdates` is restricted to `CallbackQuery` only.
-- The bot token and webhook secret are stored outside source control (e.g. `appsettings.Development.json`, excluded from git, or environment variables/user secrets in other environments) and should be rotated if ever exposed.
-- Production requires a publicly reachable HTTPS endpoint for the webhook.
-
-## Cloudinary Integration
-
-### Image Upload Flow
-
-1. An administrator submits an image via `multipart/form-data`.
-2. The backend validates file size and allowed image type.
-3. The Cloudinary service uploads the image.
-4. Cloudinary returns a secure image URL and a `PublicId`.
-5. The backend stores both the URL and `PublicId` in the database — the `PublicId` is stored explicitly rather than reconstructed from the URL.
-
-### Image Deletion Flow
-
-1. The stored `PublicId` is used to request deletion from Cloudinary.
-2. The database record is marked deleted following the application's soft-delete approach.
-
-### Image Management Rules
-
-- Maximum of three **active** images per product (soft-deleted images don't count toward the limit).
-- One image can be designated primary; the primary image uses `DisplayOrder = 0`, others use `1`, `2`, `3`.
-- Display ordering is controlled entirely by the backend, not the client.
-- Supported image formats and file size are validated server-side.
-
-### Reliability Consideration
-
-Cloudinary operations and the database update are not one automatic atomic transaction. If an upload succeeds but the database save fails, the uploaded asset may need manual cleanup — production hardening should add retry/cleanup handling and logging for these cases.
-
-## Authentication and Authorization
-
-- **ASP.NET Core Identity** manages administrator accounts and roles (`ApplicationUser` extends `IdentityUser` with `FirstName`/`LastName`, unique normalized email).
-- Login issues a **JWT** after successful authentication; the token carries `NameIdentifier`, `Name`, `Email`, `JTI`, and role claims, all using `DateTime.UtcNow`.
-- JWT expiry is configured via `JWT:ExpiryMinutes` in `appsettings.json` (recommended: 120 minutes), with `ClockSkew = TimeSpan.Zero`.
-- Role-based authorization restricts administrative operations.
-- `GET /api/auth/me` returns the currently authenticated user's info.
-- Guest customers never log in — checkout does not require an account.
-
-### Middleware Order
-
-```csharp
-app.UseCors("FrontendPolicy");
-app.UseAuthentication();
-app.UseAuthorization();
-```
-
-### JWT Logout Consideration
-
-Logout is **frontend-only** in V1: the client removes the stored token and redirects to login. This does not invalidate a copied token before it expires. Refresh-token support and proper revocation are deferred to V2.
+---
 
 ## Order Management
 
 ### Guest Checkout
 
-Customers check out without an account by submitting contact info, a delivery address, and the requested items. The backend:
+No customer account is required. A customer submits:
+- Name and phone number
+- Delivery address
+- Ordered products and quantities
 
-- Validates customer fields and item quantities.
-- Checks product existence and availability (rejects the whole checkout if any item is unavailable).
-- Calculates prices and totals server-side.
-- Stores product name/price snapshots.
-- Generates a sequential order number.
-- Creates the order as `Pending`.
-- Sends a Telegram notification to the admin.
+**Payment method:** Cash on Delivery (COD).
+
+### Checkout Workflow
+
+1. Receive customer and order-item data.
+2. Validate the request (FluentValidation pipeline).
+3. Retrieve the requested products.
+4. Check that every product is available; reject the entire order if any product is not.
+5. Calculate the order total from prices and quantities.
+6. Create the `Order` and `OrderItem` records.
+7. Generate a sequential order number.
+8. Persist the order in SQL Server.
+9. Send a Telegram notification to the store.
+
+### Order Numbers
+
+```
+ORD-000001
+ORD-000002
+ORD-000003
+```
 
 ### Order Statuses
 
 | Status | Meaning |
 |---|---|
-| `Pending` | Order created, awaiting an administrator's decision. |
-| `Confirmed` | Administrator accepted the order. |
-| `Cancelled` | Administrator cancelled the order. |
+| `Pending` | Order created, awaiting store confirmation |
+| `Confirmed` | Accepted by the store |
+| `Cancelled` | Cancelled by the store |
 
-Transitions are restricted to `Pending → Confirmed` or `Pending → Cancelled`; any other transition raises a `BusinessRuleException`. Admins manage status through protected API endpoints or Telegram's inline buttons.
+### Order Item Snapshots
 
-### Order Numbering
+Each `OrderItem` stores a snapshot of the product name and price at the time of ordering. Historical orders remain accurate even if catalog data changes later.
 
-Order numbers follow the format `ORD-000001`, generated via a SQL Server **sequence** and an `ICodeGeneratorService` / `CodeGeneratorService` implementation, guaranteeing uniqueness without relying on client input.
+---
 
-## Offers / Discounts
+## Telegram Bot Integration
 
-There is no separate `Offer` entity. A product is considered on offer whenever `OldPrice > Price`; the frontend is responsible for displaying the discount based on these two fields.
+The Telegram integration gives the store real-time order awareness and the ability to manage orders directly from Telegram.
 
-## Store Settings
+### New Order Notification
 
-Single-row settings entity: `StoreName`, `Phone`, `Address`, `Facebook`, `Instagram`, `WhatsApp`, `TikTok`. Seeded via `HasData`.
+When an order is placed, a Telegram message is sent containing:
+- Order number
+- Customer name and phone
+- Ordered products and quantities
+- Order total
 
-> ⚠️ Do not modify the seeded `HasData` values directly in a new migration — doing so can overwrite values an administrator has already edited through the app.
+The message includes **Confirm** and **Cancel** inline buttons.
 
-- Public: `GET /api/store-settings`
-- Admin: `PUT /api/admin/store-settings`
+### Callback Workflow
 
-## Admin Dashboard
+1. An administrator presses an inline button in Telegram.
+2. Telegram sends a callback update to the configured webhook.
+3. The backend receives and validates the webhook secret token.
+4. The callback is processed as an order status update command.
+5. The order status is updated in SQL Server.
+6. The original Telegram message may be updated to reflect the result.
 
-`GET /api/admin/dashboard/stats?period=Today|Week|Month` returns:
+**Webhook endpoint:**
+```http
+POST /api/telegram/webhook
+```
 
-- Total sales (from `Confirmed` orders only)
-- Total orders
-- Confirmed / Pending / Cancelled order counts
-- Available products count
-- Best-selling products (top 10, from `Confirmed` orders only)
+---
 
-No charts in V1 — numeric stats only.
+## Cloudinary Integration
 
-## CORS Policy
+Product images are stored externally on Cloudinary rather than on the application server.
 
-Configured in `Program.cs` under the policy name `"FrontendPolicy"`, with allowed origins read from `Cors:AllowedOrigins` in `appsettings.json`. `UseCors` must be registered **before** `UseAuthentication`/`UseAuthorization`.
+### Upload Flow
+
+1. API receives an image upload request.
+2. Backend validates the file (type, size limits).
+3. Backend uploads the image to Cloudinary.
+4. Cloudinary returns a secure URL and `PublicId`.
+5. Backend stores both in SQL Server.
+
+### Delete Flow
+
+1. Backend retrieves the image's `PublicId`.
+2. Backend requests deletion from Cloudinary.
+3. Backend deletes the image record from SQL Server.
+
+> ⚠️ Cloudinary and SQL Server operations are not atomic. A production-hardened implementation should handle cases where one succeeds and the other fails (retry logic, orphaned asset cleanup).
+
+---
+
+## Security
+
+- Administrative endpoints are protected by JWT Bearer authentication and authorization policies.
+- JWT signing keys must be strong and kept outside source control.
+- Cloudinary and Telegram credentials are managed via environment variables or .NET User Secrets — never committed to Git.
+- Telegram webhook requests are validated using a configured secret token.
+- Uploaded images are validated and subject to size/type limits.
+- Internal exception details are not exposed in production responses.
+- HTTPS is required in deployed environments.
+- SQL Server and hosting resources follow least-privilege access principles.
+
+### If Credentials Are Exposed
+
+Removing a secret from the latest commit is insufficient if it was pushed to a remote. **Rotate immediately:**
+- JWT signing key
+- Database password
+- Cloudinary API secret
+- Telegram bot token
+- Telegram webhook secret
+
+Then review Git history and audit repository access.
+
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- .NET 8 SDK
-- SQL Server
-- Entity Framework Core CLI tools
-- Cloudinary credentials (for image upload)
-- Telegram bot credentials (to test notifications and callbacks)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download)
+- SQL Server (local instance or accessible server)
+- Visual Studio 2022 / Visual Studio Code / Rider
+- Cloudinary account and credentials
+- Telegram bot token and webhook secret
 
-### 1. Clone the Repository
+### Clone the Repository
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
+git clone <repository-url>
 cd LibraryStore
 ```
 
-Open the solution in Visual Studio or your preferred .NET IDE.
+### Configure Secrets
 
-### 2. Configure Application Secrets
+Use [.NET User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) or environment variables to supply the following configuration:
 
-Set the connection string, JWT settings, Cloudinary credentials, and Telegram settings — see [Configuration](#configuration).
+| Configuration | Description |
+|---|---|
+| SQL Server connection string | Database access |
+| JWT signing key + token settings | Authentication |
+| Cloudinary cloud name, API key, API secret | Image storage |
+| Telegram bot token | Bot integration |
+| Telegram webhook secret token | Webhook validation |
 
-### 3. Restore Dependencies
+> ⚠️ **Never commit real credentials to Git.**
+
+### Apply Database Migrations
+
+```bash
+dotnet ef database update
+```
+
+Run from the correct startup or migrations project. Specify `--project` and `--startup-project` flags if the solution separates them.
+
+### Build and Run
 
 ```bash
 dotnet restore
+dotnet build
+dotnet run
 ```
 
-### 4. Apply Database Migrations
+### API Documentation
 
-```bash
-dotnet ef database update \
-  --project LibraryStore.Infrastructure \
-  --startup-project LibraryStore.WebApi
+If Swagger/OpenAPI is configured, the development Swagger UI is available at:
+
+```
+https://localhost:<port>/swagger
 ```
 
-Adjust `--project` if migrations live elsewhere. Create an initial migration first if one doesn't exist yet.
+Use it to explore all routes, request schemas, and response contracts.
 
-### 5. Run the API
+---
 
-```bash
-dotnet run --project LibraryStore.WebApi
+## Deployment
+
+A typical production deployment topology:
+
+```
+Customer Browser
+      │
+      ▼
+Frontend Hosting
+      │  HTTPS API requests
+      ▼
+Reverse Proxy (e.g. Nginx)
+      │
+      ▼
+ASP.NET Core Web API
+      │
+      ├──▶ SQL Server
+      ├──▶ Cloudinary
+      └──▶ Telegram Bot API
 ```
 
-If Swagger is enabled in Development, open `/swagger` on the printed URL to explore the API.
+**Deployment checklist:**
+1. Choose a VPS or cloud hosting provider.
+2. Configure the server and firewall.
+3. Install or containerize the .NET API.
+4. Provision SQL Server with secure access.
+5. Supply environment variables and secrets.
+6. Configure a domain and HTTPS certificate (e.g. Let's Encrypt).
+7. Configure a reverse proxy (Nginx or similar).
+8. Register the Telegram webhook with the public HTTPS endpoint.
+9. Configure automated database backups and test restoration.
+10. Add structured logging and health monitoring.
 
-### 6. Test the Telegram Webhook (Optional)
+> Docker, CI/CD pipelines, and production monitoring are planned but not yet fully implemented. See [Roadmap](#roadmap).
 
-Local testing needs a public HTTPS URL forwarding to your dev machine (e.g. via a tunneling tool such as ngrok: `Kestrel → http://localhost:5002 → ngrok → https://xxx.ngrok-free.dev/api/telegram/webhook`). In production, configure the real deployed HTTPS URL and keep the webhook secret protected.
+---
 
-## Configuration
+## Known Limitations & Scope
 
-Illustrative template — match property names to the actual options classes/bindings in the code:
+| Area | Current Scope |
+|---|---|
+| Customer accounts | Guest checkout; no customer registration |
+| Payment | Cash on Delivery only |
+| Delivery fee | Handled outside the backend |
+| Delivery area | Intended for Minya |
+| Inventory | No stock-quantity management |
+| Order statuses | Pending, Confirmed, Cancelled |
+| Auth logout | Client-side token deletion; no server-side revocation |
+| Refresh tokens | Not included in V1 |
+| Images | Up to three active images per product via Cloudinary |
+| Frontend | Separate project |
+| Deployment | Production deployment not yet fully documented |
 
-```json
-{
-  "ConnectionStrings": {
-    "cs": "YOUR_SQL_SERVER_CONNECTION_STRING"
-  },
-  "Jwt": {
-    "Key": "REPLACE_WITH_A_LONG_RANDOM_SECRET",
-    "Issuer": "YOUR_ISSUER",
-    "Audience": "YOUR_AUDIENCE",
-    "ExpiryMinutes": 120
-  },
-  "Cloudinary": {
-    "CloudName": "YOUR_CLOUD_NAME",
-    "ApiKey": "YOUR_API_KEY",
-    "ApiSecret": "DO_NOT_COMMIT_THIS_SECRET"
-  },
-  "Telegram": {
-    "BotToken": "DO_NOT_COMMIT_YOUR_BOT_TOKEN",
-    "WebhookSecret": "DO_NOT_COMMIT_YOUR_WEBHOOK_SECRET"
-  },
-  "Cors": {
-    "AllowedOrigins": ["https://your-frontend-domain.com"]
-  }
-}
-```
+---
 
-### Secret Management
+## Roadmap
 
-Use .NET User Secrets locally, or environment variables / a secret manager in deployment. Nested keys use double underscores:
+### Backend & Reliability
+- [ ] Unit and integration test coverage
+- [ ] Structured logging and health check endpoints
+- [ ] Rate limiting for public endpoints
+- [ ] Consistent API response envelopes and versioning
+- [ ] Idempotency protection for checkout
+- [ ] Resilient Cloudinary/Telegram failure handling
+- [ ] Background job processing for notifications and cleanup
 
-```text
-ConnectionStrings__cs
-Jwt__Key
-Cloudinary__ApiSecret
-Telegram__BotToken
-Telegram__WebhookSecret
-```
+### Authentication & Authorization
+- [ ] Refresh token workflow
+- [ ] Server-side token revocation
+- [ ] Granular administrator roles and permissions
 
-Use a strong random JWT signing key, and rotate any credential that was ever committed or shared — removing a secret from the latest file version does not remove it from git history.
+### E-Commerce
+- [ ] Stock quantity and inventory management
+- [ ] Delivery fee rules and service area configuration
+- [ ] Online payment integration
+- [ ] Order history and reporting
+- [ ] Discounts and promotions
+- [ ] Optional customer accounts
 
-## API Endpoints
+### DevOps & Operations
+- [ ] Dockerized development and production deployment
+- [ ] CI/CD pipeline
+- [ ] Automated database backups and restore testing
+- [ ] Monitoring and alerting
+- [ ] Full deployment documentation
 
-Representative routes — confirm exact paths against the controllers or Swagger UI.
+---
 
-| Area | Example method and route | Access |
-|---|---|---|
-| Authentication | `POST /api/auth/register` | Public (admin setup) |
-| Authentication | `POST /api/auth/login` | Public |
-| Authentication | `GET /api/auth/me` | Authenticated |
-| Products | `GET /api/products` | Public |
-| Products | `GET /api/products/{id}` | Public |
-| Products | `GET /api/products/new-arrivals` | Public (latest 6, static) |
-| Categories | `GET /api/categories` | Public |
-| Guest checkout | `POST /api/order` | Public |
-| Admin products | `GET/POST/PUT/DELETE /api/admin/products[/{id}]` | Admin |
-| Admin categories | `POST/PUT/DELETE /api/admin/categories[/{id}]` | Admin |
-| Admin orders | `GET /api/admin/orders`, `GET /api/admin/orders/{id}` | Admin |
-| Admin order status | Confirm/Cancel order routes | Admin |
-| Admin dashboard | `GET /api/admin/dashboard/stats?period=` | Admin |
-| Store settings | `GET /api/store-settings` | Public |
-| Store settings | `PUT /api/admin/store-settings` | Admin |
-| Product images | Multipart upload route | Admin |
-| Telegram webhook | `POST /api/telegram/webhook` | Validated Telegram webhook |
+## License
 
-Use Swagger/OpenAPI in Development to inspect the actual routes exposed.
-
-### Uploading Product Images
-
-Image upload requests use `multipart/form-data` (not JSON) since they include a file — typically the product ID, image file, and a primary-image flag. Display order is assigned by the backend, never the client.
-
-## Security Notes
-
-- Never commit real connection strings, JWT signing keys, Cloudinary API secrets, Telegram bot tokens, or webhook secrets.
-- Rotate any credential that has been exposed.
-- Protect administrative write endpoints with authentication and the correct role.
-- Validate the Telegram webhook secret and restrict callback actions to the authorized administrator's Telegram user ID.
-- Validate uploaded files by size and type; don't rely solely on the submitted content type.
-- Use HTTPS in deployment.
-- Return generic errors to clients; log detailed exceptions securely server-side.
-- Back up the database and test restores before handling real orders.
-- Review CORS, logging, database permissions, and secret storage before public deployment.
-
-## Current Business Scope (V1)
-
-- Payment method: Cash on Delivery only (no payment gateway).
-- Delivery limited to Minya; delivery fees are handled outside the backend.
-- Product availability is a boolean flag — no stock/inventory quantity tracking, no max-quantity rule.
-- Single branch store.
-- No customer accounts, order history, coupons, complex offers, or multi-branch support.
-- No caching, rate limiting, background jobs, or distributed systems components.
-
-## Roadmap (V2)
-
-- Deployment (Azure / Render / Railway)
-- Refactor shared DTOs
-- Automated testing (unit + integration)
-- Refresh-token support / proper token revocation
-- Rate limiting and further production hardening
-- Caching, background jobs (e.g. Hangfire), RabbitMQ
-- Docker-based deployment, reverse proxy, HTTPS automation, backups
-- CI/CD pipeline
-- Stock quantities and reservation
-- Broader monitoring/logging for webhook and external API failures
-
-## Project Status
-
-LibraryStore is an actively developed, backend-focused portfolio/freelance project demonstrating ASP.NET Core architecture, database modeling, authentication, order management, and third-party API integrations (Telegram, Cloudinary).
-
-**Built with C# and ASP.NET Core 8.**
+This project is for portfolio and educational purposes. Add a license file if you intend to open-source or redistribute this codebase.
